@@ -104,6 +104,14 @@ Run every command from the repository root.
    src/nemotron_voice_agent/livekit/examples/generic_assistant/run.sh up single-gpu   # Single GPU
    ```
 
+   To also answer phone calls, add `--sip` to `run.sh up`, or add the `/sip` profile and set `LIVEKIT_SIP=1` with Compose. SIP needs a Linux host. The [SIP guide](SIP.md) covers the full setup, including the number mapping:
+
+   ```bash
+   src/nemotron_voice_agent/livekit/examples/generic_assistant/run.sh up cloud --sip   # or server, single-gpu
+   # The Compose equivalent. LIVEKIT_SIP=1 is required, or `sip-setup` fails with "sip not connected (redis required)":
+   LIVEKIT_SIP=1 docker compose --profile generic-assistant-livekit --profile generic-assistant-livekit/sip up -d
+   ```
+
    The first start of the Server and Single GPU profiles downloads and loads models, which can take a long time. The script prints progress every 15 seconds. `not ready yet` is normal while a large model loads. Investigate only if a container restarts or its last log line stops changing. Connect after the script prints `Ready to connect`. To stop waiting without stopping the containers, press Ctrl+C. Use these commands to resume the wait, or to skip it:
 
    ```bash

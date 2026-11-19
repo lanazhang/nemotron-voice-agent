@@ -2,7 +2,7 @@
 
 This guide connects the example to a phone number or contact-center platform over the standard Session Initiation Protocol (SIP), using the open source [LiveKit SIP](https://docs.livekit.io/sip/) service. A call becomes a LiveKit room, and the same agent answers it with the same models and [sample use cases](README.md#sample-use-cases). Each number can map to a different use case.
 
-SIP is optional and off unless you start a profile with `--sip`. It adds Redis and LiveKit SIP, and it listens on port 5060 and a range of UDP ports on the server's host network. Allow only your provider's addresses to reach them. The network setup is always manual, and the example never changes your router or firewall. The steps use Twilio as the worked example, and any SIP provider works the same way. Check them against the current [LiveKit SIP documentation](https://docs.livekit.io/sip/) and your provider's documentation.
+SIP is optional and off unless you start a profile with `--sip`, or with Compose and `LIVEKIT_SIP=1` ([step 3](#3-start-the-deployment-with-sip)). It adds Redis and LiveKit SIP, and it listens on port 5060 and a range of UDP ports on the server's host network. Allow only your provider's addresses to reach them. The network setup is always manual, and the example never changes your router or firewall. The steps use Twilio as the worked example, and any SIP provider works the same way. Check them against the current [LiveKit SIP documentation](https://docs.livekit.io/sip/) and your provider's documentation.
 
 ## How It Works
 
@@ -120,6 +120,12 @@ LIVEKIT_SIP=1 docker compose \
   --profile generic-assistant-livekit --profile generic-assistant-livekit/sip up -d
 ```
 
+Set `LIVEKIT_SIP=1` on every `up`, or put it in `.env`. It makes the `livekit-init` service add Redis to the LiveKit server configuration. Without it, the `/sip` profile still starts Redis and LiveKit SIP, but the LiveKit server does not use Redis, and `sip-setup` fails with `sip not connected (redis required)`. For the Server or Single GPU profile, replace `generic-assistant-livekit` with `generic-assistant-livekit/server` or `generic-assistant-livekit/single-gpu`, and keep the `/sip` profile. The `run.sh up <profile> --sip` command sets the variable and the profiles for you. To switch a running stack to SIP with Compose, stop it first with the matching `down`:
+
+```bash
+docker compose --profile generic-assistant-livekit --profile generic-assistant-livekit/sip down
+```
+
 ## 4. Map a Number to a Use Case
 
 The following command creates records inside LiveKit. It does not touch your provider, router, or firewall.
@@ -206,6 +212,8 @@ The following table lists common symptoms and their likely causes.
 | The SIP log shows an incoming call, then `status 486` with `reason "no-dispatch"`, or a 403, a 404, or "no trunk found" | The call reached your server, but LiveKit has no trunk or rule for the called number. Run `sip-setup` with the exact number from the log's `toUser`, in E.164 form. If you set `--allowed-address`, check that the log's `fromIP` is in one of those ranges |
 | The call connects but has no audio, or one-way audio | RTP is blocked, or the wrong address is advertised. Open the RTP range to the provider's media range, and turn off the router's SIP ALG |
 | The call connects, then silence, then it hangs up | The agent is not registered, or it cannot reach the models. Check the agent log |
+| `sip-setup` fails with `sip not connected (redis required)` | The stack started without `LIVEKIT_SIP=1`, so the LiveKit server has no Redis. Stop the stack, then start it again with `run.sh up <profile> --sip`, or with `LIVEKIT_SIP=1` set for Compose ([step 3](#3-start-the-deployment-with-sip)) |
+| `up` fails with `port is already allocated` for 6379 or 3000 | Containers of an earlier deployment still hold the ports. Stop that deployment from its own folder with `docker compose --profile <profile> down`. List the holders with `docker ps --format '{{.Names}}\t{{.Ports}}'` |
 | `up --sip` stops with "only on Linux" | SIP needs host networking. Use a Linux server |
 | It works in the browser but never by phone | The SSH tunnel does not carry phone calls. Follow [step 2](#2-set-up-the-network-and-firewall-optional) |
 
